@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KrewOS — Interactive Observatory Demo</title>
+    <meta
+      name="description"
+      content="Interactive live demo of KrewOS: coordinate an AI agent crew, inspect workspaces, and explore the Observatory directly in your browser."
+    />
+    <meta name="theme-color" content="#07080d" />
+    <meta property="og:title" content="KrewOS — Interactive 3D Observatory Demo" />
+    <meta property="og:description" content="Explore the KrewOS 3D Observatory directly in your browser (WebAssembly): coordinate Helios and specialist agents, inspect terminals, browsers, and the secret vault." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://krewos.github.io/demo.html" />
+    <meta property="og:image" content="https://krewos.github.io/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="KrewOS — Interactive 3D Observatory Demo" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="KrewOS — Interactive 3D Observatory Demo" />
+    <meta name="twitter:description" content="Try KrewOS directly in your browser with zero install: interactive 3D solar system Observatory powered by Rust &amp; WebAssembly." />
+    <meta name="twitter:image" content="https://krewos.github.io/og-image.png" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="fonts/sora.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin=""
+    />
+    <link
+      rel="preload"
+      href="fonts/iosevka-term.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin=""
+    />
+    <link rel="modulepreload" href="vendor/three-0.186.1/three.module.js" />
+    <link rel="modulepreload" href="vendor/three-0.186.1/three.core.js" />
+    <style id="krewos-demo-boot-css">
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #07080d;
+        color: #eef1fb;
+        font-family:
+          "Sora",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        overflow: hidden;
+      }
+
+      .wasm-boot {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.9rem;
+        background: radial-gradient(
+          circle at 50% 42%,
+          rgba(255, 169, 77, 0.1),
+          rgba(7, 8, 13, 0.96) 58%
+        );
+        transition:
+          opacity 260ms ease,
+          visibility 260ms ease;
+      }
+
+      .wasm-boot[data-ready="true"] {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .wasm-boot__ring {
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 999px;
+        border: 2px solid rgba(255, 180, 94, 0.2);
+        border-top-color: #ffae52;
+        box-shadow: 0 0 28px rgba(255, 169, 77, 0.25);
+        animation: wasm-spin 900ms linear infinite;
+      }
+
+      @keyframes wasm-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .wasm-boot__title {
+        font-size: 0.92rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: #f4f6ff;
+      }
+
+      .wasm-boot__sub {
+        font-family: "Iosevka Term", ui-monospace, monospace;
+        font-size: 0.76rem;
+        color: #98a2c3;
+      }
+
+      .wasm-sandbox-bar {
+        position: fixed;
+        top: 0.85rem;
+        right: 1.15rem;
+        z-index: 25;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.3rem 0.45rem 0.3rem 0.65rem;
+        border-radius: 999px;
+        background: rgba(11, 13, 22, 0.78);
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42);
+        font-family:
+          "Sora",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        font-size: 0.72rem;
+        line-height: 1;
+        color: #cfd6ee;
+        user-select: none;
+        max-width: calc(100vw - 1.5rem);
+      }
+
+      .wasm-sandbox-bar[hidden] {
+        display: none !important;
+      }
+
+      .wasm-sandbox-bar__dot {
+        width: 0.44rem;
+        height: 0.44rem;
+        border-radius: 999px;
+        background: #3fe0a0;
+        box-shadow: 0 0 10px rgba(63, 224, 160, 0.8);
+        flex-shrink: 0;
+      }
+
+      .wasm-sandbox-bar__label {
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        color: #eef1fb;
+        white-space: nowrap;
+      }
+
+      .wasm-sandbox-bar__sep {
+        width: 1px;
+        height: 0.85rem;
+        background: rgba(255, 255, 255, 0.12);
+        margin: 0 0.1rem;
+        flex-shrink: 0;
+      }
+
+      .wasm-sandbox-bar__btn {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.05);
+        color: #e4e9fb;
+        font-family: inherit;
+        font-size: 0.69rem;
+        font-weight: 500;
+        padding: 0.26rem 0.56rem;
+        border-radius: 999px;
+        cursor: pointer;
+        text-decoration: none;
+        white-space: nowrap;
+        transition:
+          background 140ms ease,
+          border-color 140ms ease,
+          color 140ms ease;
+      }
+
+      .wasm-sandbox-bar__btn:hover {
+        background: rgba(255, 174, 82, 0.15);
+        border-color: rgba(255, 174, 82, 0.42);
+        color: #ffffff;
+      }
+
+      .wasm-sandbox-bar__btn--accent {
+        background: rgba(255, 169, 77, 0.16);
+        border-color: rgba(255, 169, 77, 0.38);
+        color: #ffd093;
+      }
+
+      /* Onboarding hint pill in field view */
+      .wasm-onboarding-hint {
+        position: fixed;
+        bottom: 1.15rem;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 20;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        max-width: min(40rem, calc(100vw - 20rem));
+        padding: 0.44rem 0.55rem 0.44rem 0.85rem;
+        border-radius: 999px;
+        background: rgba(11, 13, 22, 0.82);
+        border: 1px solid rgba(255, 179, 64, 0.26);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.52);
+        font-size: 0.76rem;
+        line-height: 1.35;
+        color: #d7def4;
+        transition:
+          opacity 220ms ease,
+          visibility 220ms ease,
+          transform 220ms ease;
+      }
+
+      .wasm-onboarding-hint strong {
+        color: #ffd093;
+        font-weight: 600;
+      }
+
+      .wasm-onboarding-hint__close {
+        appearance: none;
+        border: 0;
+        background: rgba(255, 255, 255, 0.08);
+        color: #b8c2e0;
+        width: 1.35rem;
+        height: 1.35rem;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        line-height: 1;
+        cursor: pointer;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .wasm-onboarding-hint__close:hover {
+        background: rgba(255, 179, 64, 0.22);
+        color: #ffffff;
+      }
+
+      .wasm-onboarding-hint[data-dismissed="true"],
+      body:has(.cosmos:not([data-view="field"])) .wasm-onboarding-hint,
+      body:has(dialog[open]) .wasm-onboarding-hint {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      @media (max-width: 768px) {
+        .wasm-sandbox-bar {
+          top: 0.5rem;
+          right: 0.5rem;
+          left: auto;
+          max-width: calc(100vw - 3.6rem);
+          gap: 0.3rem;
+          padding: 0.24rem 0.36rem 0.24rem 0.5rem;
+        }
+        .wasm-sandbox-bar__label,
+        .wasm-sandbox-bar__sep {
+          display: none;
+        }
+        .wasm-sandbox-bar__btn {
+          font-size: 0.65rem;
+          padding: 0.24rem 0.46rem;
+        }
+        .wasm-onboarding-hint {
+          left: 3.4rem;
+          right: 0.55rem;
+          bottom: 0.7rem;
+          transform: none;
+          max-width: none;
+          border-radius: 12px;
+          font-size: 0.71rem;
+          padding: 0.42rem 0.5rem 0.42rem 0.7rem;
+        }
+      }
+    </style>
+    <style id="krewos-app-css"></style>
+    <style id="krewos-demo-overrides">
+      /* 1. Hide logout station inside embedded landing-page sandbox */
+      body[data-demo-embed="true"] .circles__logout {
+        display: none !important;
+      }
+
+      /* 2. Ensure orbiting planet labels (e.g. Forge on far orbit) remain legible on first glance */
+      .cosmos[data-view="field"] .star[data-orbit] :is(.sigil__name, .sigil__title) {
+        opacity: max(0.64, var(--label-alpha, 1));
+      }
+
+      /* 3. Desktop & tablet clearance: prevent station modals from clipping left Meridian labels */
+      @media (min-width: 769px) {
+        :is(
+            .workspace__dialog,
+            .routines__dialog,
+            .browser__dialog,
+            .vault__dialog,
+            .terminal__dialog
+          ):modal:not([data-workspace-fullscreen="true"]):not(
+            [data-routines-fullscreen="true"]
+          ):not([data-browser-fullscreen="true"]):not(
+            [data-vault-fullscreen="true"]
+          ):not([data-terminal-fullscreen="true"]) {
+          --demo-rail-safe: 10.6rem;
+          width: min(var(--mc-panel-width), calc(100vw - var(--demo-rail-safe) - 1.25rem));
+          max-width: min(var(--mc-panel-width), calc(100vw - var(--demo-rail-safe) - 1.25rem));
+          margin-left: max(calc((100vw - var(--mc-panel-width)) / 2), var(--demo-rail-safe));
+          margin-right: auto;
+        }
+      }
+
+      /* 4. Mobile (< 768px): compact Meridian icon rail + full-width readable chat & modals */
+      @media (max-width: 768px) {
+        .cosmos,
+        .cosmos[data-view="intimate"],
+        .cosmos[data-view="circle"],
+        .cosmos[data-view="intimate"]:has(.orrery[data-ready]),
+        .cosmos[data-view="circle"]:has(.orrery[data-ready]) {
+          --mc-hub-width: 2.65rem;
+          --mc-hub-gap: 0.45rem;
+          --mc-conv-width: calc(100vw - var(--mc-hub-width) - var(--mc-hub-gap) - 1.15rem);
+          padding: 0.55rem 0.55rem 0.85rem;
+        }
+
+        .circles {
+          --meridian-x: 1.32rem;
+          height: calc(100dvh - 1.2rem);
+          max-height: calc(100dvh - 1.2rem);
+          min-height: calc(100dvh - 1.2rem);
+        }
+
+        .circles .meridian__station {
+          padding-right: 0.28rem;
+          gap: 0;
+        }
+
+        .circles .meridian__station > .inscription,
+        .circles .circles__edit-btn {
+          display: none !important;
+        }
+
+        .cosmos:has(.orrery[data-ready]) > .field > :is(.threads, .constellation),
+        .cosmos[data-view="intimate"] .field .constellation,
+        .cosmos[data-view="circle"] .field .constellation,
+        .cosmos[data-view="intimate"] .field:has(> .orrery[data-ready]) .constellation,
+        .cosmos[data-view="circle"] .field:has(> .orrery[data-ready]) .constellation {
+          left: calc(var(--mc-hub-width) + var(--mc-hub-gap));
+          right: 0.55rem;
+        }
+
+        .cosmos[data-view="intimate"] .stream,
+        .cosmos[data-view="circle"] .stream,
+        .cosmos[data-view="intimate"] .souffle,
+        .cosmos[data-view="circle"] .souffle {
+          margin-left: 0;
+          max-width: 100%;
+          width: 100%;
+        }
+
+        :is(
+            .workspace__dialog,
+            .routines__dialog,
+            .browser__dialog,
+            .vault__dialog,
+            .terminal__dialog,
+            .genesis__dialog
+          ):modal {
+          width: calc(100vw - 3.55rem) !important;
+          max-width: calc(100vw - 3.55rem) !important;
+          height: calc(100dvh - 3.6rem) !important;
+          max-height: calc(100dvh - 3.6rem) !important;
+          margin: 2.85rem 0.45rem auto auto !important;
+        }
+
+        .workspace__panes,
+        .routines__panes {
+          grid-template-columns: minmax(0, 1fr) !important;
+          overflow-y: auto;
+        }
+      }
+    </style>
+  </head>
+  <body data-shell-progressive="enabled">
+    <div class="wasm-boot" id="wasm-boot" role="status" aria-live="polite">
+      <div class="wasm-boot__ring" aria-hidden="true"></div>
+      <div class="wasm-boot__title">Loading KrewOS Live Demo…</div>
+      <div class="wasm-boot__sub" id="wasm-boot-status">
+        Initializing in-browser sandbox (krewos_web.wasm)
+      </div>
+    </div>
+
+    <aside class="wasm-sandbox-bar" id="wasm-sandbox-bar" aria-label="Sandbox Simulation Mode">
+      <span class="wasm-sandbox-bar__dot" aria-hidden="true"></span>
+      <span class="wasm-sandbox-bar__label">Simulated Demo</span>
+      <span class="wasm-sandbox-bar__sep" aria-hidden="true"></span>
+      <button type="button" class="wasm-sandbox-bar__btn" id="wasm-reset-btn" title="Reset in-memory crew &amp; transcripts">
+        Reset
+      </button>
+      <a href="https://github.com/krewos/krewos" target="_blank" rel="noopener" class="wasm-sandbox-bar__btn" id="wasm-github-link" title="Star KrewOS on GitHub">
+        ★ Star on GitHub
+      </a>
+      <a href="index.html#quickstart" class="wasm-sandbox-bar__btn wasm-sandbox-bar__btn--accent" id="wasm-docs-link">
+        ← Quickstart
+      </a>
+    </aside>
+
+    <aside class="wasm-onboarding-hint" id="wasm-onboarding-hint" role="note">
+      <span>
+        <strong>Interactive Crew:</strong> Click any planet to chat 1:1, open
+        <strong>Release Readiness</strong> for team coordination, or inspect
+        <strong>Browser, Terminal &amp; Vault</strong> on the left.
+      </span>
+      <button
+        type="button"
+        class="wasm-onboarding-hint__close"
+        id="wasm-onboarding-dismiss"
+        aria-label="Dismiss hint"
+      >×</button>
+    </aside>
+
+    <div id="krewos-cosmos-mount"></div>
+
+    <script src="demo.js" defer></script>
+  </body>
+</html>
