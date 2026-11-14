@@ -123,17 +123,17 @@
   const AGENT_BROWSER_PAGES = {
     helios: {
       uid: "10002:10002 (profile: /var/lib/krewos-browser/profiles/helios)",
-      url: "https://github.com/krewos/krewos/releases/tag/v0.1.2",
-      title: "Release v0.1.2 · krewos/krewos — Chromium (:99)",
+      url: "https://github.com/krewos/krewos/releases/tag/v0.1.3",
+      title: "Release v0.1.3 · krewos/krewos — Chromium (:99)",
       badge: "Helios · Circle Lead",
       accent: "#ffae52",
-      heading: "krewos/krewos — Public Release Readiness v0.1.2",
+      heading: "krewos/krewos — Public Release Readiness v0.1.3",
       summary:
         "Single-container Distroless image (gcr.io/distroless/cc-debian13) verified. All 7 container-security-check.sh invariants green.",
       cards: [
         {
           label: "Container Digest",
-          value: "ghcr.io/krewos:0.1.2 (sha256:9f84c2e1...4d85ced)",
+          value: "ghcr.io/krewos:0.1.3 (sha256:9f84c2e1...4d85ced)",
         },
         {
           label: "Kernel Envelope",
